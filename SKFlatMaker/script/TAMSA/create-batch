@@ -13,7 +13,6 @@ parser.add_argument('--nmax', dest='NMax', default=0, type=int)
 args = parser.parse_args()
 
 runlist = open(args.RunList).readlines()
-NJobs = len(runlist)
 
 pwd = os.getcwd()
 CMSSW_BASE = os.environ['CMSSW_BASE']
@@ -27,15 +26,48 @@ JobStartTime = datetime.datetime.now()
 timestamp =  JobStartTime.strftime('%Y_%m_%d_%H%M%S')
 
 outbasedir = '/gv0/DATA/SKFlat/'+SKFlatTag+'/'+args.Year+'/PrivateMC/'+args.Name+'/'
-os.system('mkdir -p '+outbasedir)
 
 #### first write the executable
 
 JobName = timestamp+'__'+args.Name
 os.system('mkdir -p '+JobName)
-executable_filename = 'SKFlatMaker_'+args.Year+'_'+args.Name+'.sh'
-executable = open(pwd+'/'+JobName+'/'+executable_filename,'w')
-print>>executable,'''#!/bin/bash
+
+#### Submission script
+out_sub = open(JobName+'/SubmitAll.sh','w')
+
+#### Now loop over mass
+
+for i in range(0,len(runlist)):
+
+  mass = runlist[i].strip('\n')
+
+  filelist = open('filelist/'+args.Year+'/'+mass+'.txt').readlines()
+
+  this_JobDir = mass
+  os.system('mkdir -p '+JobName+'/'+mass)
+
+  #### write run_XX.sh
+  for i_file in range(0,len(filelist)):
+
+    runfile = open(pwd+'/'+JobName+'/'+mass+'/run_'+str(i_file)+'.sh','w')
+
+    outdest = outbasedir+mass+'/'+timestamp+'/'
+    os.system('mkdir -p '+outdest)
+
+    cmd  = "cmsRun "+cfgfile+" "+"\\\n"
+    cmd += "inputFiles=file:"+filelist[i_file].strip('\n')+" \\\n"
+    cmd += "outputFile="+outdest+"SKFlatNtuple_"+args.Year+"_MC_"+str(i_file)+".root"+" \\\n"
+    cmd += "sampletype=PrivateMC year="+args.Year+" ScaleIDRange=1001,1045 PDFErrorIDRange=1046,1146 PDFAlphaSIDRange=1147,1148 PDFAlphaSScaleValue=0.75,0.75"
+
+    runfile.write(cmd)
+
+    runfile.close()
+
+  #### write executable
+
+  executable_filename = 'SKFlatMaker_'+args.Year+'_'+args.Name+'_'+mass+'.sh'
+  executable = open(pwd+'/'+JobName+'/'+mass+'/'+executable_filename,'w')
+  print>>executable,'''#!/bin/bash
 SECTION=`printf $1`
 WORKDIR=`pwd`
 
@@ -53,14 +85,16 @@ echo "@@@@ scram..."
 eval `scramv1 runtime -sh`
 cd -
 source {2}/run_${{SECTION}}.sh
-'''.format(SCRAM_ARCH,CMSSW_BASE,pwd+'/'+JobName)
-executable.close()
+'''.format(SCRAM_ARCH,CMSSW_BASE,pwd+'/'+JobName+'/'+mass)
+  executable.close()
 
-#### Write jds
+  #### Write jds
 
-concurrency_limits='concurrency_limits = n'+str(args.NMax)+'.'+os.getenv("USER")
-jdsfile = open(pwd+'/'+JobName+'/submit.jds','w')
-print>>jdsfile,'''executable = {1}
+  concurrency_limits=''
+  if args.NMax>0:
+    concurrency_limits='concurrency_limits = n'+str(args.NMax)+'.'+os.getenv("USER")
+  jdsfile = open(pwd+'/'+JobName+'/'+mass+'/submit.jds','w')
+  print>>jdsfile,'''executable = {1}
 universe   = vanilla
 arguments  = $(Process)
 log = condor.log
@@ -71,43 +105,17 @@ output = job_$(Process).log
 error = job_$(Process).err
 {2}
 queue {0}
-'''.format(str(NJobs), executable_filename,concurrency_limits)
-jdsfile.close()
+'''.format(str(len(filelist)), executable_filename,concurrency_limits)
+  jdsfile.close()
 
-#### write job sh file
+  print>>out_sub,'''#### {0}
+cd {0}
+echo "@@@@ Submitting {0}..."
+condor_submit submit.jds -batch-name {1}
+cd ../
+'''.format(mass,args.Name+"__"+args.Year)
 
-for i in range(0,NJobs):
-
-  mass = runlist[i].strip('\n')
-
-  filelist = open('filelist/'+args.Year+'/'+mass+'.txt').readlines()
-
-  runfile = open(pwd+'/'+JobName+'/run_'+str(i)+'.sh','w')
-
-  outdest = outbasedir+mass+'/'+timestamp+'/'
-  os.system('mkdir -p '+outdest)
-
-  infilelist = ""
-  for f in filelist:
-    if "#" in f:
-      continue
-    infilelist += 'file:'+f.strip('\n')+','
-  infilelist = infilelist[:-1]
-
-  cmd  = "cmsRun "+cfgfile+" "+"\\\n"
-  cmd += "inputFiles="+infilelist+" \\\n"
-  cmd += "outputFile="+outdest+"SKFlatNtuple_"+args.Year+"_MC_1.root"+" \\\n"
-  cmd += "sampletype=PrivateMC year="+args.Year+" ScaleIDRange=1001,1045 PDFErrorIDRange=1046,1146 PDFAlphaSIDRange=1147,1148 PDFAlphaSScaleValue=0.75,0.75"
-
-  runfile.write(cmd)
-
-  runfile.close()
-
-
-
-
-
-
+out_sub.close()
 
 
 

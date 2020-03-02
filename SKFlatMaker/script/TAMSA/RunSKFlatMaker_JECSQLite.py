@@ -486,6 +486,28 @@ elif Is2018:
   ### https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookJetEnergyCorrections#CorrPatJets
   #################
 
+  from CondCore.CondDB.CondDB_cfi import CondDB
+  CondDBJECFile = CondDB.clone(connect = cms.string( 'sqlite_file:/data6/Users/jskim/SKFlatMaker/Run2Legacy_v4__CMSSW_10_2_18/src/SKFlatMaker/SKFlatMaker/data/JECDatabase/SQLiteFiles/Autumn18_FastSimV1_MC.db' ) )
+  process.jec = cms.ESSource('PoolDBESSource',
+      CondDBJECFile,
+      toGet = cms.VPSet(
+          cms.PSet(
+              record = cms.string('JetCorrectionsRecord'),
+              tag    = cms.string('JetCorrectorParametersCollection_Autumn18_FastSimV1_MC_AK4PFchs'),
+              label  = cms.untracked.string('AK4PFchs')
+          ),
+          cms.PSet(
+              record = cms.string('JetCorrectionsRecord'),
+              tag    = cms.string('JetCorrectorParametersCollection_Autumn18_FastSimV1_MC_AK8PFPuppi'),
+              label  = cms.untracked.string('AK8PFPuppi')
+          ),
+          # ...and so on for all jet types you need
+      )
+  )
+
+  # Add an ESPrefer to override JEC that might be available from the global tag
+  process.es_prefer_jec = cms.ESPrefer('PoolDBESSource', 'jec')
+
   from PhysicsTools.PatAlgos.tools.jetTools import updateJetCollection
 
   #### AK4
