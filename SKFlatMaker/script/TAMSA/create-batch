@@ -21,6 +21,8 @@ SKFlatWD = os.environ['SKFlatWD']
 SKFlatTag = os.environ['SKFlatTag']
 
 cfgfile = SKFlatWD+'/SKFlatMaker/script/TAMSA/RunSKFlatMaker_JECSQLite.py'
+if 'full' in args.RunList.lower():
+  cfgfile = SKFlatWD+'/SKFlatMaker/script/TAMSA/RunSKFlatMaker.py'
 
 JobStartTime = datetime.datetime.now()
 timestamp =  JobStartTime.strftime('%Y_%m_%d_%H%M%S')
