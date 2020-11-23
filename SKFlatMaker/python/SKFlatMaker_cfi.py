@@ -19,6 +19,9 @@ SKFlatMaker = cms.EDAnalyzer("SKFlatMaker",
   LHERunInfoProduct = cms.untracked.InputTag("externalLHEProducer"),
   GenParticle = cms.untracked.InputTag("genParticles"),
 
+  genLumiInfoHeader = cms.InputTag("generator"),
+  targetSignalMass = cms.untracked.vint32(-999,-999),
+
   #### MiniIso
   pfCandsForMiniIso = cms.untracked.InputTag("packedPFCandidates"),
   ## Muon

@@ -164,6 +164,9 @@
 #include <boost/foreach.hpp>
 #include <TRandom.h>
 
+//==== RP
+#include "SimDataFormats/GeneratorProducts/interface/GenLumiInfoHeader.h"
+
 using namespace std;
 using namespace pat;
 using namespace edm;
@@ -257,6 +260,9 @@ class SKFlatMaker : public edm::EDAnalyzer
   edm::EDGetTokenT< double > prefweight_token;
   edm::EDGetTokenT< double > prefweightup_token;
   edm::EDGetTokenT< double > prefweightdown_token;
+
+  const edm::EDGetTokenT<GenLumiInfoHeader> genLumiInfoHeadTag_;
+  vector<int> targetSignalMass;
   
   edm::FileInPath electron_EA_NHandPh_file;
   edm::FileInPath photon_EA_CH_file;
@@ -692,6 +698,8 @@ class SKFlatMaker : public edm::EDAnalyzer
   int genWeight_id2;
   double genWeight_alphaQCD;
   double genWeight_alphaQED;
+
+  int genMWR, genMN;
   
   //==== Photon information
   vector<double> photon_Energy;

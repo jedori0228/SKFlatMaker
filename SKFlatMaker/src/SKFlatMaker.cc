@@ -64,7 +64,8 @@ GenEventInfoToken                   ( consumes< GenEventInfoProduct >           
 BeamSpotToken                       ( consumes< reco::BeamSpot >                            (iConfig.getUntrackedParameter<edm::InputTag>("BeamSpot")) ),
 PrimaryVertexToken                  ( consumes< reco::VertexCollection >                    (iConfig.getUntrackedParameter<edm::InputTag>("PrimaryVertex")) ),
 TrackToken                          ( consumes< edm::View<reco::Track> >                    (iConfig.getUntrackedParameter<edm::InputTag>("Track")) ),
-PileUpInfoToken                     ( consumes< std::vector< PileupSummaryInfo > >          (iConfig.getUntrackedParameter<edm::InputTag>("PileUpInfo")) )
+PileUpInfoToken                     ( consumes< std::vector< PileupSummaryInfo > >          (iConfig.getUntrackedParameter<edm::InputTag>("PileUpInfo")) ),
+genLumiInfoHeadTag_( mayConsume<GenLumiInfoHeader, edm::InLumi>(iConfig.getParameter<edm::InputTag>("genLumiInfoHeader")))
 {
 
   DataYear                          = iConfig.getUntrackedParameter<int>("DataYear");
@@ -163,6 +164,8 @@ PileUpInfoToken                     ( consumes< std::vector< PileupSummaryInfo >
 
   if(theDebugLevel) cout << "[SKFlatMaker::SKFlatMaker] Constructor finished" << endl;
 
+  targetSignalMass = iConfig.getUntrackedParameter< std::vector<int> >("targetSignalMass");
+  cout << "[SKFlatMaker::SKFlatMaker] targetSignalMass, (mWR,mN) = (" << targetSignalMass.at(0) << ", " << targetSignalMass.at(1) << ")" << endl;
 }
 
 SKFlatMaker::~SKFlatMaker() { }
@@ -232,8 +235,35 @@ void SKFlatMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 {
 
   if(theDebugLevel) cout << "[SKFlatMaker::analyze] called" << endl;
+
+  //==== read randomized paramter first
+
+  const edm::LuminosityBlock& iLumi = iEvent.getLuminosityBlock();
+
+  edm::Handle<GenLumiInfoHeader> genLumiInfoHead;
+  iLumi.getByToken(genLumiInfoHeadTag_, genLumiInfoHead);
+
+  std::string configDescription_ = genLumiInfoHead->configDescription();
+  std::stringstream test(configDescription_);
+  std::string segment;
+  std::vector<std::string> seglist;
+
+  while(std::getline(test, segment, '_'))
+  {
+     seglist.push_back(segment);
+  }
+
+  int this_mWR = std::stoi( seglist.at(1).substr(3) );
+  int this_mN  = std::stoi( seglist.at(2).substr(2) );
+
+  //if( this_mWR != targetSignalMass.at(0) ) return;
+  //if( this_mN  != targetSignalMass.at(1) ) return;
+
+  genMWR = this_mWR;
+  genMN = this_mN;
+
   iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder",theTTBuilder);
-  
+
   ///////////////////////////////////////////
   // -- initialize for ntuple variables -- //
   ///////////////////////////////////////////
@@ -1141,6 +1171,8 @@ void SKFlatMaker::beginJob()
     DYTree->Branch("genWeight_id2", &genWeight_id2, "genWeight_id2/I");
     DYTree->Branch("genWeight_alphaQCD", &genWeight_alphaQCD, "genWeight_alphaQCD/D");
     DYTree->Branch("genWeight_alphaQED", &genWeight_alphaQED, "genWeight_alphaQED/D");
+    DYTree->Branch("genMWR", &genMWR, "genMWR/I");
+    DYTree->Branch("genMN", &genMN, "genMN/I");
   }
   
   if( theStorePhotonFlag ){
